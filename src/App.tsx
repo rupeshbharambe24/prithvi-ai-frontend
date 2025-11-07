@@ -18,6 +18,11 @@ import HeatRisk from "./pages/console/HeatRisk";
 import DiseaseRisk from "./pages/console/DiseaseRisk";
 import HospitalSurge from "./pages/console/HospitalSurge";
 import AirQuality from "./pages/console/AirQuality";
+import Scenario from "./pages/console/Scenario";
+import KnowledgeGraph from "./pages/console/KnowledgeGraph";
+import Evidence from "./pages/console/Evidence";
+import Catalog from "./pages/console/Catalog";
+import Fairness from "./pages/console/Fairness";
 import Alerts from "./pages/console/Alerts";
 import Settings from "./pages/console/Settings";
 import NotFound from "./pages/NotFound";
@@ -73,6 +78,11 @@ const App = () => {
               <Route path="disease" element={<DiseaseRisk />} />
               <Route path="hospital" element={<HospitalSurge />} />
               <Route path="air" element={<AirQuality />} />
+              <Route path="scenario" element={<Scenario />} />
+              <Route path="kg" element={<KnowledgeGraph />} />
+              <Route path="evidence" element={<Evidence />} />
+              <Route path="catalog" element={<Catalog />} />
+              <Route path="fairness" element={<Fairness />} />
               <Route path="alerts" element={<Alerts />} />
               <Route path="settings" element={<Settings />} />
             </Route>
