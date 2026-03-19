@@ -1,101 +1,130 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Bell, AlertTriangle, Check, Clock } from "lucide-react";
+import { Bell, AlertTriangle, Check, Clock, Loader2, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-
-const alerts = [
-  {
-    id: '1',
-    type: 'heat',
-    severity: 'high',
-    title: 'Extreme Heat Warning',
-    message: 'Temperature expected to reach 41°C in next 48 hours. High vulnerability in North District.',
-    timestamp: '2 hours ago',
-    acknowledged: false,
-  },
-  {
-    id: '2',
-    type: 'disease',
-    severity: 'high',
-    title: 'Dengue Outbreak Alert',
-    message: 'R(t) = 1.5 in Central District. Active transmission ongoing with 45 new cases reported.',
-    timestamp: '5 hours ago',
-    acknowledged: false,
-  },
-  {
-    id: '3',
-    type: 'hospital',
-    severity: 'medium',
-    title: 'Hospital Capacity Warning',
-    message: 'ED occupancy at 82%. Surge forecast suggests 150 admissions by Thursday.',
-    timestamp: '8 hours ago',
-    acknowledged: true,
-  },
-  {
-    id: '4',
-    type: 'air',
-    severity: 'medium',
-    title: 'Air Quality Alert',
-    message: 'AQI forecast to reach 165 (Unhealthy). Combined heat-air risk elevated.',
-    timestamp: '12 hours ago',
-    acknowledged: true,
-  },
-  {
-    id: '5',
-    type: 'heat',
-    severity: 'low',
-    title: 'Heat Advisory',
-    message: 'Above-normal temperatures expected. Monitor vulnerable populations.',
-    timestamp: '1 day ago',
-    acknowledged: true,
-  },
-];
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAlerts, useAlertRules, useAckAlert, useRunAlertEvaluation, useCreateAlertRule } from "@/hooks/use-api";
+import { useToast } from "@/hooks/use-toast";
 
 const Alerts = () => {
   const { t } = useTranslation();
+  const { toast } = useToast();
+  const { data: alerts, isLoading } = useAlerts();
+  const { data: rules } = useAlertRules();
+  const ackMutation = useAckAlert();
+  const evalMutation = useRunAlertEvaluation();
+  const createRuleMutation = useCreateAlertRule();
 
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'high': return 'destructive';
-      case 'medium': return 'default';
-      case 'low': return 'secondary';
-      default: return 'secondary';
-    }
+  const [ruleForm, setRuleForm] = useState({ name: '', metric: 'heat', condition: '>=', threshold: '0.7', severity: 'warn' });
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  const alertList = alerts ?? [];
+  const ruleList = rules ?? [];
+
+  const openAlerts = alertList.filter(a => a.status === 'open');
+  const criticalAlerts = alertList.filter(a => a.severity === 'critical');
+  const ackedAlerts = alertList.filter(a => a.status === 'ack');
+
+  const getSeverityVariant = (s: string) => s === 'critical' ? 'destructive' as const : s === 'warn' ? 'default' as const : 'secondary' as const;
+
+  const getMetricIcon = (metric: string) => {
+    const m = (typeof metric === 'string' ? metric : '').toLowerCase();
+    if (m.includes('heat')) return '🌡️';
+    if (m.includes('disease') || m.includes('dengue')) return '🦟';
+    if (m.includes('surge') || m.includes('hospital')) return '🏥';
+    if (m.includes('pm25') || m.includes('air')) return '💨';
+    return '⚠️';
   };
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'heat': return '🌡️';
-      case 'disease': return '🦟';
-      case 'hospital': return '🏥';
-      case 'air': return '💨';
-      default: return '⚠️';
+  const handleCreateRule = async () => {
+    try {
+      await createRuleMutation.mutateAsync({
+        name: ruleForm.name,
+        metric: ruleForm.metric,
+        condition: ruleForm.condition,
+        threshold: parseFloat(ruleForm.threshold),
+        severity: ruleForm.severity,
+        horizonDays: 3,
+        channels: ['email'],
+        cooldownMinutes: 120,
+      });
+      toast({ title: "Rule Created", description: `Alert rule "${ruleForm.name}" created successfully.` });
+      setDialogOpen(false);
+      setRuleForm({ name: '', metric: 'heat', condition: '>=', threshold: '0.7', severity: 'warn' });
+    } catch {
+      toast({ title: "Error", description: "Failed to create rule", variant: "destructive" });
     }
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="space-y-6"
-    >
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold mb-2">{t('nav.alerts')}</h1>
-          <p className="text-muted-foreground">
-            Climate-health early warning system
-          </p>
+          <p className="text-muted-foreground">Climate-health early warning system</p>
         </div>
-        <Button className="gap-2">
-          <Bell className="h-4 w-4" />
-          Create Alert Rule
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => evalMutation.mutate()} disabled={evalMutation.isPending}>
+            <Play className="h-4 w-4 mr-2" />{evalMutation.isPending ? 'Evaluating...' : 'Evaluate Rules'}
+          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2"><Bell className="h-4 w-4" />Create Rule</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Create Alert Rule</DialogTitle></DialogHeader>
+              <div className="space-y-4">
+                <div><Label>Name</Label><Input value={ruleForm.name} onChange={e => setRuleForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Heat Warning" /></div>
+                <div><Label>Metric</Label>
+                  <Select value={ruleForm.metric} onValueChange={v => setRuleForm(p => ({ ...p, metric: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="heat">Heat</SelectItem>
+                      <SelectItem value="disease">Disease</SelectItem>
+                      <SelectItem value="surge">Hospital Surge</SelectItem>
+                      <SelectItem value="pm25">PM2.5</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><Label>Condition</Label>
+                    <Select value={ruleForm.condition} onValueChange={v => setRuleForm(p => ({ ...p, condition: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value=">=">≥</SelectItem>
+                        <SelectItem value=">">{'>'}</SelectItem>
+                        <SelectItem value="<=">≤</SelectItem>
+                        <SelectItem value="<">{'<'}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div><Label>Threshold</Label><Input type="number" step="0.1" value={ruleForm.threshold} onChange={e => setRuleForm(p => ({ ...p, threshold: e.target.value }))} /></div>
+                </div>
+                <div><Label>Severity</Label>
+                  <Select value={ruleForm.severity} onValueChange={v => setRuleForm(p => ({ ...p, severity: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="critical">Critical</SelectItem>
+                      <SelectItem value="warn">Warning</SelectItem>
+                      <SelectItem value="info">Info</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button onClick={handleCreateRule} disabled={!ruleForm.name || createRuleMutation.isPending} className="w-full">
+                  {createRuleMutation.isPending ? 'Creating...' : 'Create Rule'}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
-      {/* Alert Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -103,130 +132,94 @@ const Alerts = () => {
             <Bell className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">5</div>
-            <p className="text-xs text-muted-foreground mt-1">Last 24 hours</p>
+            <div className="text-2xl font-bold">{alertList.length}</div>
           </CardContent>
         </Card>
-
-        <Card className="bg-destructive/10 border-destructive/30">
+        <Card className={criticalAlerts.length > 0 ? "bg-destructive/10 border-destructive/30" : ""}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">High Severity</CardTitle>
+            <CardTitle className="text-sm font-medium">Critical</CardTitle>
             <AlertTriangle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">2</div>
-            <p className="text-xs text-muted-foreground mt-1">Requires immediate action</p>
+            <div className="text-2xl font-bold text-destructive">{criticalAlerts.length}</div>
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Acknowledged</CardTitle>
             <Check className="h-4 w-4 text-accent" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">3</div>
-            <p className="text-xs text-muted-foreground mt-1">60% response rate</p>
-          </CardContent>
+          <CardContent><div className="text-2xl font-bold">{ackedAlerts.length}</div></CardContent>
         </Card>
-
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Avg Response Time</CardTitle>
+            <CardTitle className="text-sm font-medium">Open</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">1.5h</div>
-            <p className="text-xs text-muted-foreground mt-1">Target: {'<'} 2h</p>
-          </CardContent>
+          <CardContent><div className="text-2xl font-bold">{openAlerts.length}</div></CardContent>
         </Card>
       </div>
 
-      {/* Active Alerts List */}
       <Card>
         <CardHeader>
-          <CardTitle>Active Alerts</CardTitle>
-          <CardDescription>
-            All climate-health warnings and notifications
-          </CardDescription>
+          <CardTitle>Alerts</CardTitle>
+          <CardDescription>All climate-health warnings</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {alerts.map((alert) => (
-              <div 
-                key={alert.id} 
-                className={`flex items-start gap-4 p-4 rounded-lg border ${
-                  alert.acknowledged ? 'bg-muted/30 opacity-75' : 'bg-card'
-                }`}
-              >
-                <div className="text-2xl">{getTypeIcon(alert.type)}</div>
-                
-                <div className="flex-1 space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <h4 className="font-medium">{alert.title}</h4>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {alert.message}
-                      </p>
+          {isLoading ? (
+            <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+          ) : alertList.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">No alerts triggered yet. Click "Evaluate Rules" to check.</p>
+          ) : (
+            <div className="space-y-3">
+              {alertList.map((alert) => (
+                <div key={alert.id} className={`flex items-start gap-4 p-4 rounded-lg border ${alert.status === 'ack' ? 'bg-muted/30 opacity-75' : 'bg-card'}`}>
+                  <div className="text-2xl">{getMetricIcon(alert.payload?.metric as string ?? '')}</div>
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h4 className="font-medium">{String(alert.payload?.metric ?? 'Alert')} Alert</h4>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Value: {typeof alert.payload?.value === 'number' ? Number(alert.payload.value).toFixed(2) : String(alert.payload?.value ?? '')} (threshold: {String(alert.payload?.threshold ?? '')})
+                        </p>
+                      </div>
+                      <Badge variant={getSeverityVariant(alert.severity)}>{alert.severity}</Badge>
                     </div>
-                    <Badge variant={getSeverityColor(alert.severity)}>
-                      {alert.severity}
-                    </Badge>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">
-                      {alert.timestamp}
-                    </span>
-                    {!alert.acknowledged ? (
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline">
-                          View Details
-                        </Button>
-                        <Button size="sm">
-                          Acknowledge
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1 text-xs text-accent">
-                        <Check className="h-3 w-3" />
-                        <span>Acknowledged</span>
-                      </div>
-                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">{new Date(alert.startedAt).toLocaleString()}</span>
+                      {alert.status === 'open' ? (
+                        <Button size="sm" onClick={() => ackMutation.mutate(alert.id)} disabled={ackMutation.isPending}>Acknowledge</Button>
+                      ) : (
+                        <div className="flex items-center gap-1 text-xs text-accent">
+                          <Check className="h-3 w-3" /><span>Acknowledged</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Alert Rules */}
       <Card>
         <CardHeader>
           <CardTitle>Alert Rules</CardTitle>
-          <CardDescription>
-            Configured automatic alert triggers
-          </CardDescription>
+          <CardDescription>Configured automatic alert triggers</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {[
-              { condition: 'Temperature > 40°C', action: 'Send SMS to field officers', status: 'active' },
-              { condition: 'Dengue R(t) > 1.2', action: 'Email to epidemiology team', status: 'active' },
-              { condition: 'Hospital occupancy > 85%', action: 'Alert hospital admin', status: 'active' },
-              { condition: 'AQI > 200', action: 'Public health advisory', status: 'inactive' },
-            ].map((rule, i) => (
-              <div key={i} className="flex items-center justify-between p-3 rounded-lg border">
+            {ruleList.map((rule) => (
+              <div key={rule.id} className="flex items-center justify-between p-3 rounded-lg border">
                 <div>
-                  <p className="text-sm font-medium">{rule.condition}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{rule.action}</p>
+                  <p className="text-sm font-medium">{rule.name}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{rule.metric} {rule.condition} {rule.threshold} | Horizon: {rule.horizonDays}d</p>
                 </div>
-                <Badge variant={rule.status === 'active' ? 'default' : 'secondary'}>
-                  {rule.status}
-                </Badge>
+                <Badge variant={getSeverityVariant(rule.severity)}>{rule.severity}</Badge>
               </div>
             ))}
+            {ruleList.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No rules configured</p>}
           </div>
         </CardContent>
       </Card>
