@@ -1,7 +1,9 @@
 // Role-Based Access Control (RBAC)
-// Stub implementation for demonstration
+// Integrated with backend auth (cookies + /auth/* endpoints)
 
-export type Role = 
+import { api } from '@/lib/api-client';
+
+export type Role =
   | 'OrgAdmin'
   | 'Epidemiologist'
   | 'HospitalOps'
@@ -9,74 +11,79 @@ export type Role =
   | 'Viewer';
 
 export interface User {
-  id: string;
+  id: number | string;
   email: string;
-  name: string;
+  name?: string;
   role: Role;
 }
 
-// Mock current user - in production, this would come from auth context
 let currentUser: User | null = null;
+const LS_KEY = 'prithvi-user';
 
 export const authService = {
   login: async (email: string, password: string): Promise<User> => {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    
-    // Mock user based on email
-    const user: User = {
-      id: '1',
-      email,
-      name: email.split('@')[0],
-      role: email.includes('admin') ? 'OrgAdmin' : 'Epidemiologist',
-    };
-    
-    currentUser = user;
-    localStorage.setItem('prithvi-user', JSON.stringify(user));
-    return user;
+    const res = await apiFetch<{ user: User }>(`/auth/login`, {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+    currentUser = res.user;
+    localStorage.setItem(LS_KEY, JSON.stringify(currentUser));
+    return currentUser;
   },
 
-  signup: async (email: string, password: string, name: string): Promise<User> => {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    
-    const user: User = {
-      id: Math.random().toString(36).substr(2, 9),
-      email,
-      name,
-      role: 'Viewer',
-    };
-    
-    currentUser = user;
-    localStorage.setItem('prithvi-user', JSON.stringify(user));
-    return user;
+  signup: async (email: string, password: string, name?: string): Promise<User> => {
+    const res = await apiFetch<{ user: User }>(`/auth/signup`, {
+      method: 'POST',
+      body: JSON.stringify({ email, password, name }),
+    });
+    currentUser = res.user;
+    localStorage.setItem(LS_KEY, JSON.stringify(currentUser));
+    return currentUser;
   },
 
-  logout: () => {
-    currentUser = null;
-    localStorage.removeItem('prithvi-user');
+  refresh: async (): Promise<boolean> => {
+    try {
+      await apiFetch(`/auth/refresh`, { method: 'POST' });
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  logout: async (): Promise<void> => {
+    try {
+      await apiFetch(`/auth/logout`, { method: 'POST' });
+    } finally {
+      currentUser = null;
+      localStorage.removeItem(LS_KEY);
+    }
   },
 
   getCurrentUser: (): User | null => {
     if (currentUser) return currentUser;
-    
-    const stored = localStorage.getItem('prithvi-user');
-    if (stored) {
-      currentUser = JSON.parse(stored);
-      return currentUser;
-    }
-    
-    return null;
+    const stored = localStorage.getItem(LS_KEY);
+    if (stored) currentUser = JSON.parse(stored);
+    return currentUser;
   },
 
-  isAuthenticated: (): boolean => {
-    return !!authService.getCurrentUser();
+  fetchProfile: async (): Promise<User> => {
+    const user = await apiFetch<User>(`/me`, { method: 'GET' });
+    currentUser = user;
+    localStorage.setItem(LS_KEY, JSON.stringify(user));
+    return user;
   },
+
+  isAuthenticated: (): boolean => !!authService.getCurrentUser(),
 };
 
-// Role permissions mapping
+// Expose apiFetch from the same module for convenience
+async function apiFetch<T>(path: string, init?: RequestInit & { params?: Record<string,string> }) {
+  return api.getRisk<T>(path, init as any);
+}
+
+// Minimal permission helpers (client-side hints only)
 const rolePermissions: Record<Role, string[]> = {
-  OrgAdmin: ['*'], // All permissions
+  OrgAdmin: ['*'],
   Epidemiologist: ['view_data', 'create_alerts', 'run_scenarios', 'view_evidence', 'view_kg'],
   HospitalOps: ['view_data', 'view_hospital', 'view_alerts'],
   FieldOfficer: ['view_field', 'submit_data', 'view_alerts'],
@@ -86,25 +93,20 @@ const rolePermissions: Record<Role, string[]> = {
 export const hasPermission = (permission: string): boolean => {
   const user = authService.getCurrentUser();
   if (!user) return false;
-  
-  const permissions = rolePermissions[user.role];
-  return permissions.includes('*') || permissions.includes(permission);
+  const perms = rolePermissions[user.role];
+  return perms.includes('*') || perms.includes(permission);
 };
 
 export const canAccessRoute = (route: string): boolean => {
   const user = authService.getCurrentUser();
   if (!user) return false;
-
-  // Map routes to required permissions
   const routePermissions: Record<string, string> = {
     '/console/admin': '*',
     '/console/field': 'view_field',
     '/console/kg': 'view_kg',
     '/console/scenario': 'run_scenarios',
   };
-
   const requiredPermission = routePermissions[route];
-  if (!requiredPermission) return true; // No specific permission required
-
+  if (!requiredPermission) return true;
   return hasPermission(requiredPermission);
 };

@@ -4,8 +4,9 @@ import { persist } from 'zustand/middleware';
 export type Theme = 'light' | 'dark' | 'system';
 export type Language = 'en' | 'hi';
 
-interface Region {
+export interface Region {
   id: string;
+  numericId: number;
   name: string;
   coordinates: [number, number];
 }
