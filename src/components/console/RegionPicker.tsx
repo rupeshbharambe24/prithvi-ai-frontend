@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { MapPin, Check } from "lucide-react";
+import { useState, useEffect } from "react";
+import { MapPin, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -14,27 +14,35 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useAppStore } from "@/store/appStore";
+import { useAppStore, type Region } from "@/store/appStore";
 import { cn } from "@/lib/utils";
-
-const mockRegions = [
-  { id: '1', name: 'Mumbai', coordinates: [72.8777, 19.0760] as [number, number] },
-  { id: '2', name: 'Delhi', coordinates: [77.1025, 28.7041] as [number, number] },
-  { id: '3', name: 'Bengaluru', coordinates: [77.5946, 12.9716] as [number, number] },
-  { id: '4', name: 'Chennai', coordinates: [80.2707, 13.0827] as [number, number] },
-  { id: '5', name: 'Kolkata', coordinates: [88.3639, 22.5726] as [number, number] },
-];
+import { useRegions } from "@/hooks/use-api";
 
 const RegionPicker = () => {
   const [open, setOpen] = useState(false);
   const { selectedRegion, setRegion } = useAppStore();
+  const { data: apiRegions, isLoading } = useRegions();
+
+  const regions: Region[] = (apiRegions ?? []).map((r) => ({
+    id: String(r.id),
+    numericId: r.id,
+    name: r.name,
+    coordinates: [r.center?.lng ?? 0, r.center?.lat ?? 0] as [number, number],
+  }));
+
+  // Auto-select first region if none selected
+  useEffect(() => {
+    if (!selectedRegion && regions.length > 0) {
+      setRegion(regions[0]);
+    }
+  }, [regions, selectedRegion, setRegion]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="outline" className="w-[200px] justify-between">
           <div className="flex items-center gap-2">
-            <MapPin className="h-4 w-4" />
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
             <span>{selectedRegion?.name || "Select region"}</span>
           </div>
         </Button>
@@ -45,7 +53,7 @@ const RegionPicker = () => {
           <CommandList>
             <CommandEmpty>No region found.</CommandEmpty>
             <CommandGroup>
-              {mockRegions.map((region) => (
+              {regions.map((region) => (
                 <CommandItem
                   key={region.id}
                   value={region.name}

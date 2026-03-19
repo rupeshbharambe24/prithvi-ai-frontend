@@ -26,6 +26,8 @@ import Fairness from "./pages/console/Fairness";
 import Alerts from "./pages/console/Alerts";
 import Settings from "./pages/console/Settings";
 import NotFound from "./pages/NotFound";
+import Status from "./pages/Status";
+import Profile from "./pages/Profile";
 
 const queryClient = new QueryClient();
 
@@ -60,8 +62,19 @@ const App = () => {
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<Landing />} />
+            <Route path="/status" element={<Status />} />
             <Route path="/auth/login" element={<Login />} />
             <Route path="/auth/signup" element={<Signup />} />
+
+            {/* Protected standalone pages */}
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
             
             {/* Protected console routes */}
             <Route

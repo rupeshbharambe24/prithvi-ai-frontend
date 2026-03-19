@@ -127,7 +127,7 @@ const Login = () => {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground mt-4">
-          Demo: Use any email/password to log in
+          Demo users: admin@example.com / Admin123! or viewer@example.com / Viewer123!
         </p>
       </motion.div>
     </div>
