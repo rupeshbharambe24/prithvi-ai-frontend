@@ -9,30 +9,18 @@ import { AlertTriangle, RefreshCw, Info, Loader2 } from "lucide-react";
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useFairnessLatest, useRunFairness, useDriftLatest, useRunDrift } from "@/hooks/use-api";
 
-// fallback mock data if no report exists
-const mockFairnessData = [
-  { group: 'Decile 1 (Low Vuln.)', mae: 8.2, coverage: 0.95 },
-  { group: 'Decile 2', mae: 8.5, coverage: 0.94 },
-  { group: 'Decile 3', mae: 9.1, coverage: 0.92 },
-  { group: 'Decile 4', mae: 9.8, coverage: 0.90 },
-  { group: 'Decile 5', mae: 10.2, coverage: 0.88 },
-  { group: 'Decile 6', mae: 11.1, coverage: 0.85 },
-  { group: 'Decile 7', mae: 12.3, coverage: 0.82 },
-  { group: 'Decile 8', mae: 13.5, coverage: 0.78 },
-  { group: 'Decile 9', mae: 15.2, coverage: 0.72 },
-  { group: 'Decile 10 (High Vuln.)', mae: 17.8, coverage: 0.65 },
-];
-
-const mockDriftRef = [
-  { bin: '0-10', refFreq: 0.08, curFreq: 0.07 },
-  { bin: '10-20', refFreq: 0.12, curFreq: 0.11 },
-  { bin: '20-30', refFreq: 0.18, curFreq: 0.16 },
-  { bin: '30-40', refFreq: 0.22, curFreq: 0.24 },
-  { bin: '40-50', refFreq: 0.20, curFreq: 0.23 },
-  { bin: '50-60', refFreq: 0.12, curFreq: 0.13 },
-  { bin: '60-70', refFreq: 0.06, curFreq: 0.04 },
-  { bin: '70-80', refFreq: 0.02, curFreq: 0.02 },
-];
+// Build drift chart data from real backend bin data
+function buildDriftChartData(driftData: any): Array<{bin: string; refFreq: number; curFreq: number}> {
+  const bins = driftData?.bins;
+  if (!bins || !bins.labels || bins.labels.length === 0) {
+    return [];
+  }
+  return bins.labels.map((label: string, i: number) => ({
+    bin: label,
+    refFreq: bins.ref_freq?.[i] ?? 0,
+    curFreq: bins.cur_freq?.[i] ?? 0,
+  }));
+}
 
 const Fairness = () => {
   const { t } = useTranslation();
@@ -52,7 +40,10 @@ const Fairness = () => {
 
   const fairnessChartData = groups.length > 0
     ? groups.map((g: any) => ({ group: g.group ?? '', mae: g.mae ?? 0, coverage: g.coverage ?? 0 }))
-    : mockFairnessData;
+    : [];
+
+  const driftChartData = buildDriftChartData(driftData);
+  const hasDriftBins = driftChartData.length > 0;
 
   const psi = driftData?.psi ?? 0.08;
   const getPSIStatus = (p: number) => {
@@ -114,17 +105,26 @@ const Fairness = () => {
           <Card>
             <CardHeader><CardTitle>Prediction Error by Vulnerability Group</CardTitle><CardDescription>Mean Absolute Error across vulnerability deciles</CardDescription></CardHeader>
             <CardContent>
-              <div className="h-[350px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={fairnessChartData} layout="vertical" margin={{ left: 120 }}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis type="number" domain={[0, 20]} />
-                    <YAxis type="category" dataKey="group" width={110} style={{ fontSize: '11px' }} />
-                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }} />
-                    <Bar dataKey="mae" fill="hsl(var(--primary))" name="MAE" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              {fairnessChartData.length > 0 ? (
+                <div className="h-[350px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={fairnessChartData} layout="vertical" margin={{ left: 120 }}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                      <XAxis type="number" domain={[0, 'auto']} />
+                      <YAxis type="category" dataKey="group" width={110} style={{ fontSize: '11px' }} />
+                      <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }} />
+                      <Bar dataKey="mae" fill="hsl(var(--primary))" name="MAE" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+                  <div className="text-center">
+                    <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No fairness report data. Run an evaluation to see per-group metrics.</p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -159,19 +159,28 @@ const Fairness = () => {
           <Card>
             <CardHeader><CardTitle>Feature Distribution: Temperature (°C)</CardTitle><CardDescription>Reference period vs. current period</CardDescription></CardHeader>
             <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={mockDriftRef}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis dataKey="bin" />
-                    <YAxis domain={[0, 0.3]} tickFormatter={(v) => `${(v * 100).toFixed(0)}%`} />
-                    <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }} formatter={(value: any) => `${(value * 100).toFixed(1)}%`} />
-                    <Legend />
-                    <Line type="monotone" dataKey="refFreq" stroke="hsl(var(--muted-foreground))" strokeDasharray="5 5" name="Reference" dot={false} />
-                    <Line type="monotone" dataKey="curFreq" stroke="hsl(var(--primary))" strokeWidth={2} name="Current" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
+              {hasDriftBins ? (
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={driftChartData}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                      <XAxis dataKey="bin" style={{ fontSize: '10px' }} />
+                      <YAxis domain={[0, 'auto']} tickFormatter={(v) => `${(v * 100).toFixed(0)}%`} />
+                      <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }} formatter={(value: any) => `${(value * 100).toFixed(1)}%`} />
+                      <Legend />
+                      <Line type="monotone" dataKey="refFreq" stroke="hsl(var(--muted-foreground))" strokeDasharray="5 5" name="Reference" dot={false} />
+                      <Line type="monotone" dataKey="curFreq" stroke="hsl(var(--primary))" strokeWidth={2} name="Current" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+                  <div className="text-center">
+                    <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No drift distribution data yet. Click "Recompute PSI" to generate.</p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
