@@ -16,6 +16,7 @@ import {
   MapPin,
   Users,
   Globe,
+  Brain,
 } from "lucide-react";
 import {
   Sidebar,
@@ -55,6 +56,7 @@ const ConsoleSidebar = () => {
   const systemItems = [
     { icon: Database, label: t('nav.catalog'), path: '/console/catalog' },
     { icon: Shield, label: t('nav.fairness'), path: '/console/fairness' },
+    { icon: Brain, label: 'Models', path: '/console/models' },
     { icon: Settings, label: t('nav.settings'), path: '/console/settings' },
   ];
 

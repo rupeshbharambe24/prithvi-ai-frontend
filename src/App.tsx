@@ -25,6 +25,7 @@ import Catalog from "./pages/console/Catalog";
 import Fairness from "./pages/console/Fairness";
 import Alerts from "./pages/console/Alerts";
 import Settings from "./pages/console/Settings";
+import Models from "./pages/console/Models";
 import NotFound from "./pages/NotFound";
 import Status from "./pages/Status";
 import Profile from "./pages/Profile";
@@ -96,6 +97,7 @@ const App = () => {
               <Route path="evidence" element={<Evidence />} />
               <Route path="catalog" element={<Catalog />} />
               <Route path="fairness" element={<Fairness />} />
+              <Route path="models" element={<Models />} />
               <Route path="alerts" element={<Alerts />} />
               <Route path="settings" element={<Settings />} />
             </Route>

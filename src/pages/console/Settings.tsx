@@ -60,12 +60,12 @@ const Settings = () => {
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5"><Label>Temperature Units</Label><p className="text-xs text-muted-foreground">Celsius (°C) or Fahrenheit (°F)</p></div>
-            <select className="border rounded px-3 py-2 text-sm"><option>Celsius</option><option>Fahrenheit</option></select>
+            <select className="border border-input bg-background text-foreground rounded-md px-3 py-2 text-sm"><option>Celsius</option><option>Fahrenheit</option></select>
           </div>
           <Separator />
           <div className="flex items-center justify-between">
             <div className="space-y-0.5"><Label>Date Format</Label><p className="text-xs text-muted-foreground">How dates are displayed</p></div>
-            <select className="border rounded px-3 py-2 text-sm"><option>DD/MM/YYYY</option><option>MM/DD/YYYY</option><option>YYYY-MM-DD</option></select>
+            <select className="border border-input bg-background text-foreground rounded-md px-3 py-2 text-sm"><option>DD/MM/YYYY</option><option>MM/DD/YYYY</option><option>YYYY-MM-DD</option></select>
           </div>
         </CardContent>
       </Card>
