@@ -1,73 +1,113 @@
-# Welcome to your Lovable project
+<div align="center">
 
-## Project info
+# 🖥️ PRITHVI-AI · Frontend Console
 
-**URL**: https://lovable.dev/projects/aa42214b-2fa1-4972-abfd-5be44d181cac
+### Interactive climate-health intelligence dashboard
 
-## How can I edit this code?
+<br/>
 
-There are several ways of editing your application.
+[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-38B2AC?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![shadcn/ui](https://img.shields.io/badge/shadcn%2Fui-000000?logo=shadcnui&logoColor=white)](https://ui.shadcn.com/)
+[![MapLibre](https://img.shields.io/badge/MapLibre-GL-396CB2?logo=maplibre&logoColor=white)](https://maplibre.org/)
 
-**Use Lovable**
+*Part of [PRITHVI-AI](https://github.com/rupeshbharambe24/prithvi-ai) · talks to the [FastAPI backend](https://github.com/rupeshbharambe24/prithvi-ai-backend).*
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/aa42214b-2fa1-4972-abfd-5be44d181cac) and start prompting.
+</div>
 
-Changes made via Lovable will be committed automatically to this repo.
+---
 
-**Use your preferred IDE**
+> [!NOTE]
+> The operations console for PRITHVI-AI: an interactive, map-driven dashboard where
+> epidemiologists and hospital teams explore **heat, disease, surge, and air-quality
+> forecasts**, browse the **evidence knowledge graph**, plan **scenarios**, and monitor
+> **model performance, fairness, and alerts** — with light/dark themes and i18n.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## 📑 Contents
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- [Features](#-features) · [Pages](#-pages) · [Tech stack](#-tech-stack)
+- [Quick start](#-quick-start) · [Configuration](#-configuration) · [Project structure](#-project-structure)
 
-Follow these steps:
+## ✨ Features
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+- 🗺️ **Interactive maps** — region risk layers rendered with MapLibre GL + vector tiles
+- 📊 **Forecast dashboards** — risk scores with **p05/p95 uncertainty bands** and SHAP drivers
+- 🕸️ **Knowledge-graph explorer** — Cytoscape graph of climate/disease/evidence entities
+- 🧪 **Scenario planner** & 🎯 **resource view** backed by the optimizer
+- 📉 **Model & fairness monitoring** — registry, skill-over-time, drift, per-region gaps
+- 🔔 **Alerts** management with rules and severities
+- 🌗 **Dark / light theme**, 🌐 **i18n** (i18next), ⚡ animated UI (Framer Motion)
+- 🔐 Cookie + CSRF auth flow with role-based route protection
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+## 🧭 Pages
 
-# Step 3: Install the necessary dependencies.
-npm i
+| Route | Page | Route | Page |
+|-------|------|-------|------|
+| `/console/overview` | 📋 Overview | `/console/scenario` | 🧪 Scenario Planner |
+| `/console/heat` | 🌡️ Heat Risk | `/console/kg` | 🕸️ Knowledge Graph |
+| `/console/disease` | 🦟 Disease Risk | `/console/evidence` | 📚 Evidence |
+| `/console/hospital` | 🏥 Hospital Surge | `/console/catalog` | 🗂️ Data Catalog |
+| `/console/air` | 🌫️ Air Quality | `/console/fairness` | ⚖️ Fairness & QA |
+| `/console/models` | 🤖 Models | `/console/alerts` | 🔔 Alerts |
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+## 🧱 Tech stack
+
+`React 18` · `Vite 5` · `TypeScript 5` · `Tailwind CSS` · `shadcn/ui` (Radix) ·
+`TanStack Query` · `React Router` · `MapLibre GL` · `Cytoscape` · `Recharts` ·
+`react-hook-form` + `zod` · `i18next` · `Framer Motion`
+
+## 🚀 Quick start
+
+> [!IMPORTANT]
+> Start the [backend](https://github.com/rupeshbharambe24/prithvi-ai-backend) first (port 8000).
+
+```bash
+npm install
+npm run dev          # → http://localhost:5173
 ```
 
-**Edit a file directly in GitHub**
+Other scripts:
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```bash
+npm run build        # production build
+npm run preview      # preview the production build
+npm run lint         # lint
+```
 
-**Use GitHub Codespaces**
+**Demo login:** `admin@example.com` / `Admin123!`
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## ⚙️ Configuration
 
-## What technologies are used for this project?
+Create `.env.development.local` (git-ignored) to point at your backend:
 
-This project is built with:
+```env
+VITE_API_BASE_URL=http://localhost:8000
+VITE_API_PREFIX=/api/v1
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+API requests are sent with `credentials: 'include'`; write requests send an `X-CSRF-Token`
+header read from the `csrf_token` cookie.
 
-## How can I deploy this project?
+## 📁 Project structure
 
-Simply open [Lovable](https://lovable.dev/projects/aa42214b-2fa1-4972-abfd-5be44d181cac) and click on Share -> Publish.
+```
+src/
+├── pages/
+│   ├── console/      Overview, HeatRisk, DiseaseRisk, HospitalSurge, AirQuality,
+│   │                 Scenario, KnowledgeGraph, Evidence, Catalog, Fairness, Models, Alerts
+│   └── auth/         Login, Signup
+├── components/
+│   ├── console/      Sidebar, Topbar, RegionPicker, DateLeadPicker
+│   └── ui/           shadcn/ui primitives
+├── hooks/            use-api, use-toast, use-mobile
+├── lib/              api-client, rbac, i18n, utils
+└── store/            app store (theme, session)
+```
 
-## Can I connect a custom domain to my Lovable project?
+## 📜 License
 
-Yes, you can!
+MIT.
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+<div align="center"><sub>The human-facing window into PRITHVI-AI's forecasts. 🌍📈</sub></div>
